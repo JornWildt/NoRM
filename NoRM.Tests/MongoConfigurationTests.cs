@@ -18,6 +18,7 @@ namespace Norm.Tests
             MongoConfiguration.RemoveMapFor<Cart>();
             MongoConfiguration.RemoveMapFor<TestProduct>();
             MongoConfiguration.RemoveMapFor<ProductSummary>();
+            MongoConfiguration.RemoveTypeConverterFor<NonSerializableValueObject>();
 
             using (var admin = new MongoAdmin(TestHelper.ConnectionString()))
             {
@@ -293,6 +294,14 @@ namespace Norm.Tests
                 Assert.Equal("Soap", found.ElementAt(0).Name);
                 Assert.Equal(2, found.ElementAt(0).Price);
             }
+        }
+
+        [Fact]
+        public void Can_Register_TypeConverter()
+        {
+            MongoConfiguration.Initialize(c => c.TypeConverterFor<NonSerializableValueObject, NonSerializableValueObjectTypeConverter>());
+            IBsonTypeConverter converter = MongoConfiguration.ConfigurationContainer.GetTypeConverterFor(typeof(NonSerializableValueObject));
+            Assert.Equal(typeof(NonSerializableValueObjectTypeConverter), converter.GetType());
         }
     }
 }

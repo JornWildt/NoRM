@@ -11,6 +11,7 @@ using Norm.BSON.DbTypes;
 using Norm.Collections;
 using System.ComponentModel;
 using Norm.BSON;
+using System.Globalization;
 
 namespace Norm.Tests
 {
@@ -507,6 +508,55 @@ namespace Norm.Tests
         public bool IsOver9000 { get; set; }
     }
 
+    public class CultureInfoDTO
+    {
+        public CultureInfo Culture { get; set; }
+    }
+
+    public class NonSerializableClass
+    {
+        public NonSerializableValueObject Value { get; set; }
+        public string Text { get; set; }
+    }
+
+    public class NonSerializableValueObject
+    {
+        // Stuff a few properties in here that Norm normally cannot handle
+        private ArgumentException ex { get; set; }
+        private NonSerializableValueObject MakeNormCrashReference { get; set; }
+
+        public string Number { get; private set; }
+
+        public NonSerializableValueObject(string number)
+        {
+            Number = number;
+            MakeNormCrashReference = this;
+        }
+    }
+
+    public class NonSerializableValueObjectTypeConverter : IBsonTypeConverter
+    {
+        #region IBsonTypeConverter Members
+
+        public Type SerializedType
+        {
+            get { return typeof(string); }
+        }
+
+        public object ConvertToBson(object data)
+        {
+            return ((NonSerializableValueObject)data).Number;
+        }
+
+        public object ConvertFromBson(object data)
+        {
+            return new NonSerializableValueObject((string)data);
+        }
+
+        #endregion
+    }
+
+
     [MongoDiscriminated]
     public class SuperClassObject
     {
@@ -789,5 +839,4 @@ namespace Norm.Tests
             this.For<TestProduct>(cfg => cfg.ForProperty(p => p.Name).UseAlias("productname"));
         }
     }
-
 }

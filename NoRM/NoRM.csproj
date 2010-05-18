@@ -79,6 +79,7 @@
     <Compile Include="Attributes\MongoIgnoreIfNullAttribute.cs" />
     <Compile Include="BSON\BsonDeserializer.cs" />
     <Compile Include="BSON\BsonHelper.cs" />
+    <Compile Include="BSON\BsonSerializerBase.cs" />
     <Compile Include="BSON\Command.cs" />
     <Compile Include="BSON\DbTypes\GridFile.cs" />
     <Compile Include="BSON\DbTypes\ObjectId.cs" />
@@ -89,6 +90,7 @@
     <Compile Include="BSON\BSONTypes.cs" />
     <Compile Include="BSON\ExpandoProperty.cs" />
     <Compile Include="BSON\FieldSelectionList.cs" />
+    <Compile Include="BSON\IBsonTypeConverter.cs" />
     <Compile Include="BSON\IdPropertyFinder.cs" />
     <Compile Include="BSON\IExpando.cs" />
     <Compile Include="BSON\Lists\ArrayWrapper.cs" />
@@ -103,6 +105,7 @@
     <Compile Include="BSON\Document.cs" />
     <Compile Include="BSON\DocumentExceedsSizeLimitsException.cs" />
     <Compile Include="BSON\ModifierCommand.cs" />
+    <Compile Include="BSON\TypeConverters\CultureInfoTypeConverter.cs" />
     <Compile Include="BSON\TypeHelper.cs" />
     <Compile Include="Collections\CreateCollectionOptions.cs" />
     <Compile Include="Collections\IMongoCollectionGeneric.cs" />
