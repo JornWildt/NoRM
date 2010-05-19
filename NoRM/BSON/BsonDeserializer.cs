@@ -25,6 +25,7 @@ namespace Norm.BSON
          };
         private readonly BinaryReader _reader;
         private Document _current;
+        private IList<object> LocalObjectStore;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="BsonDeserializer"/> class.
@@ -33,6 +34,7 @@ namespace Norm.BSON
         private BsonDeserializer(BinaryReader reader)
         {
             _reader = reader;
+            LocalObjectStore = new List<object>();
         }
 
         /// <summary>
@@ -278,7 +280,11 @@ namespace Norm.BSON
                 instance = Activator.CreateInstance(type, true);
                 typeHelper = TypeHelper.GetHelperForType(type);
                 typeHelper.ApplyDefaultValues(instance);
+
+                // Add new instance to local object store before deserializing child properties
+                LocalObjectStore.Add(instance);
             }
+
             while (true)
             {
                 var storageType = ReadType();
@@ -300,6 +306,18 @@ namespace Norm.BSON
                     instance = Activator.CreateInstance(type, true);
                     typeHelper.ApplyDefaultValues(instance);
                     continue;
+                }
+
+                if (name == "__link__")
+                {
+                    // Oops this was only a reference, remove instance from local store
+                    LocalObjectStore.RemoveAt(LocalObjectStore.Count-1);
+
+                    int index = ReadInt(BSONTypes.Int32);
+                    if (IsDone())
+                        return LocalObjectStore[index];
+                    else
+                        throw new MongoException("Expected end-of-object for __link__ element but did not get it.");
                 }
 
                 if (instance == null)
@@ -352,6 +370,7 @@ namespace Norm.BSON
                     break;
                 }
             }
+
             return instance;
         }
 

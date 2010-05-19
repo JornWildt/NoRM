@@ -839,4 +839,16 @@ namespace Norm.Tests
             this.For<TestProduct>(cfg => cfg.ForProperty(p => p.Name).UseAlias("productname"));
         }
     }
+
+    public class Tree
+    {
+        public Tree Parent { get; set; }
+        public string Title { get; set; }
+        public IList<Tree> Children { get; set; }
+
+        public Tree()
+        {
+            Children = new List<Tree>();
+        }
+    }
 }

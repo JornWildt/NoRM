@@ -31,6 +31,7 @@ namespace Norm.BSON
 
         private readonly BinaryWriter _writer;
         private Document _current;
+        private IDictionary<object, int> LocalObjectKeyMap;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="BsonSerializer"/> class.
@@ -41,6 +42,7 @@ namespace Norm.BSON
         private BsonSerializer(BinaryWriter writer)
         {
             _writer = writer;
+            LocalObjectKeyMap = new Dictionary<object, int>();
         }
 
         /// <summary>
@@ -164,6 +166,13 @@ namespace Norm.BSON
         /// <param name="document">The document.</param>
         private void WriteObject(object document)
         {
+            if (LocalObjectKeyMap.ContainsKey(document))
+            {
+                WriteLocalObjectReference(document);
+                return;
+            }
+            LocalObjectKeyMap.Add(document, LocalObjectKeyMap.Count);
+
             var typeHelper = TypeHelper.GetHelperForType(document.GetType());
             var idProperty = typeHelper.FindIdProperty();
             var documentType = document.GetType();
@@ -197,6 +206,12 @@ namespace Norm.BSON
                     SerializeMember(f.PropertyName, f.Value);
                 }
             }
+        }
+
+        private void WriteLocalObjectReference(object document)
+        {
+            int localId = LocalObjectKeyMap[document];
+            SerializeMember("__link__", localId);
         }
 
         /// <summary>

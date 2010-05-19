@@ -493,5 +493,21 @@ namespace Norm.Tests
 
             BsonSerializer.UseConfiguration(null);
         }
+
+        [Fact]
+        public void SerializesCircularReferences()
+        {
+            Tree top = new Tree() { Title = "Top" };
+            Tree child = new Tree() { Title = "Child", Parent = top };
+            top.Children.Add(child);
+
+            var bytes = BsonSerializer.Serialize(top);
+            var top2 = BsonDeserializer.Deserialize<Tree>(bytes);
+
+            Assert.Equal(top.Title, top2.Title);
+            Assert.Equal(top.Children.Count, top2.Children.Count);
+            Assert.Equal(top.Children[0].Title, top2.Children[0].Title);
+            Assert.Equal(top.Children[0].Parent.Title, top2.Children[0].Parent.Title);
+        }
     }
 }
