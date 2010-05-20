@@ -122,12 +122,35 @@ namespace Norm.Configuration
                 {
                     if (map[m].ContainsKey(propertyName))
                     {
-                        retval = map[m][propertyName].Alias;
+                        string alias = map[m][propertyName].Alias;
+                        if (alias != null)
+                            retval = alias;
                         break;
                     }
                 }
             }
             return retval;
+        }
+
+        /// <summary>
+        /// Gets the "property ignored" status for a property of a type.
+        /// </summary>
+        /// <param name="type">The type to lookup the property of.</param>
+        /// <param name="propertyName">Name of property to lookup.</param>
+        /// <returns>The "property ignored" value.</returns>
+        public bool GetPropertyIgnored(Type type, string propertyName)
+        {
+            var map = MongoTypeConfiguration.PropertyMaps;
+            if (map.ContainsKey(type))
+            {
+                var properties = map[type];
+                if (properties.ContainsKey(propertyName))
+                {
+                    var expr = properties[propertyName];
+                    return expr.IsIgnored;
+                }
+            }
+            return false;
         }
 
         public Type SummaryTypeFor(Type type)

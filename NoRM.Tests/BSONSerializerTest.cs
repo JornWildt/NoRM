@@ -509,5 +509,20 @@ namespace Norm.Tests
             Assert.Equal(top.Children[0].Title, top2.Children[0].Title);
             Assert.Equal(top.Children[0].Parent.Title, top2.Children[0].Parent.Title);
         }
+
+        [Fact]
+        public void IgnoresPropertiesConfiguredForIgnoring()
+        {
+            IMongoConfigurationMap cfg = new MongoConfigurationMap();
+            cfg.For<User>(u => u.ForProperty(p => p.LastName).Ignore());
+
+            User u1 = new User() { FirstName = "Peter", LastName = "Engstrom" };
+
+            var bytes = BsonSerializer.Serialize(u1);
+            var u2 = BsonDeserializer.Deserialize<User>(bytes);
+
+            Assert.Equal(u1.FirstName, u2.FirstName);
+            Assert.Null(u2.LastName);
+        }
     }
 }

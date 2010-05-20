@@ -103,6 +103,11 @@ namespace Norm.Configuration
             return _configuration != null ? _configuration.GetConfigurationMap().GetPropertyAlias(type, propertyName) : propertyName;
         }
 
+        internal static bool GetPropertyIgnored(Type type, string propertyName)
+        {
+            return _configuration != null ? _configuration.GetConfigurationMap().GetPropertyIgnored(type, propertyName) : false;
+        }
+
         internal static IBsonTypeConverter GetBsonTypeConverter(Type t)
         {
             return _configuration != null ? _configuration.GetTypeConverterFor(t) : null;

@@ -19,5 +19,10 @@ namespace Norm.Configuration
         /// The alias.
         /// </param>
         void UseAlias(string alias);
+
+        /// <summary>
+        /// Do not serialize property.
+        /// </summary>
+        void Ignore();
     }
 }

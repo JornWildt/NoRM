@@ -308,7 +308,7 @@ namespace Norm.BSON
                     continue;
                 }
 
-                if (name == "__link__")
+                if (name == "__link")
                 {
                     // Oops this was only a reference, remove instance from local store
                     LocalObjectStore.RemoveAt(LocalObjectStore.Count-1);

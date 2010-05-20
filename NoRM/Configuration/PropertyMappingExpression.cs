@@ -19,6 +19,11 @@ namespace Norm.Configuration
         internal bool IsId { get; set; }
 
         /// <summary>
+        /// Gets or sets whether the property should be ignored during serialization
+        /// </summary>
+        internal bool IsIgnored { get; set; }
+
+        /// <summary>
         /// Gets or sets the name of the source property.
         /// </summary>
         /// <value>The name of the source property.</value>
@@ -33,6 +38,14 @@ namespace Norm.Configuration
         public void UseAlias(string alias)
         {
             Alias = alias;
+        }
+
+        /// <summary>
+        /// Do not serialize property.
+        /// </summary>
+        public void Ignore()
+        {
+            IsIgnored = true;
         }
     }
 }

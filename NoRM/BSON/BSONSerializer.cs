@@ -211,7 +211,7 @@ namespace Norm.BSON
         private void WriteLocalObjectReference(object document)
         {
             int localId = LocalObjectKeyMap[document];
-            SerializeMember("__link__", localId);
+            SerializeMember("__link", localId);
         }
 
         /// <summary>

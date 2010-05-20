@@ -303,5 +303,13 @@ namespace Norm.Tests
             IBsonTypeConverter converter = MongoConfiguration.ConfigurationContainer.GetTypeConverterFor(typeof(NonSerializableValueObject));
             Assert.Equal(typeof(NonSerializableValueObjectTypeConverter), converter.GetType());
         }
+
+        [Fact]
+        public void Mongo_Configuration_Can_Ignore_Property()
+        {
+            MongoConfiguration.Initialize(r => r.For<User>(u => u.ForProperty(user => user.FirstName).Ignore()));
+            bool isIgnored = MongoConfiguration.GetPropertyIgnored(typeof(User), "FirstName");
+            Assert.True(isIgnored);
+        }
     }
 }

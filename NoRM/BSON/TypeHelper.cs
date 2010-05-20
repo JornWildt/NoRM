@@ -214,8 +214,12 @@ namespace Norm.BSON
             var magic = new Dictionary<string, MagicProperty>(StringComparer.CurrentCultureIgnoreCase);
             foreach (var property in properties)
             {
+                //HACK: this is a latent BUG, if MongoConfiguration is altered after stashing the type helper, we die.
+                var isIgnoredByConfiguration = MongoConfiguration.GetPropertyIgnored(property.DeclaringType, property.Name);
+
                 if (property.GetCustomAttributes(_ignoredType, true).Length > 0 ||
-                    property.GetIndexParameters().Length > 0)
+                    property.GetIndexParameters().Length > 0 ||
+                    isIgnoredByConfiguration)
                 {
                     continue;
                 }
