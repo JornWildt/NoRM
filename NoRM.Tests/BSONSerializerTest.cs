@@ -508,7 +508,53 @@ namespace Norm.Tests
             Assert.Equal(top.Children.Count, top2.Children.Count);
             Assert.Equal(top.Children[0].Title, top2.Children[0].Title);
             Assert.Equal(top.Children[0].Parent.Title, top2.Children[0].Parent.Title);
+
+            // Modify child.parent and verify that top is modified too
+            top2.Children[0].Parent.Title = "Changed";
+            Assert.Equal("Changed", top2.Title);
         }
+
+        [Fact]
+        public void SerializesSharedReferences()
+        {
+            Expression child = new Expression() { Title = "Child" };
+            Expression top = new Expression() { Title = "Top", Left = child, Right = child };
+
+            var bytes = BsonSerializer.Serialize(top);
+            var top2 = BsonDeserializer.Deserialize<Expression>(bytes);
+
+            Assert.Equal(top.Title, top2.Title);
+            Assert.Equal(child.Title, top2.Left.Title);
+            Assert.Equal(child.Title, top2.Right.Title);
+
+            // Modify Left and verify that Right is modified too
+            top2.Left.Title = "Changed";
+            Assert.Equal(top2.Left.Title, top2.Right.Title);
+        }
+
+#if true
+        // Cannot test this since Expando cannot hold a class instance
+        [Fact]
+        public void SerializesSharedReferencesInExpando()
+        {
+            Expression child = new Expression() { Title = "Child" };
+            Expando top = new Expando();
+            top["Title"] = "Top";
+            top["Left"] = child;
+            top["Right"] = child;
+
+            var bytes = BsonSerializer.Serialize(top);
+            var top2 = BsonDeserializer.Deserialize<Expando>(bytes);
+
+            Assert.Equal(top["Title"], top2["Title"]);
+            Assert.Equal(child.Title, ((Expression)top2["Left"]).Title);
+            Assert.Equal(child.Title, ((Expression)top2["Right"]).Title);
+
+            // Modify Left and verify that Right is modified too
+            ((Expression)top2["Left"]).Title = "Changed";
+            Assert.Equal(((Expression)top2["Left"]).Title, ((Expression)top2["Right"]).Title);
+        }
+#endif
 
         [Fact]
         public void IgnoresPropertiesConfiguredForIgnoring()

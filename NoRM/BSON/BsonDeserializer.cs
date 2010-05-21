@@ -305,6 +305,7 @@ namespace Norm.BSON
                     typeHelper = TypeHelper.GetHelperForType(type);
                     instance = Activator.CreateInstance(type, true);
                     typeHelper.ApplyDefaultValues(instance);
+                    LocalObjectStore[LocalObjectStore.Count - 1] = instance;
                     continue;
                 }
 

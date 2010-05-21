@@ -866,4 +866,12 @@ namespace Norm.Tests
             Children = new List<Tree>();
         }
     }
+
+    [MongoDiscriminated]
+    public class Expression
+    {
+        public string Title { get; set; }
+        public Expression Left { get; set; }
+        public Expression Right { get; set; }
+    }
 }
