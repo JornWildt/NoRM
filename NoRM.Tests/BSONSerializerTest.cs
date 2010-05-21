@@ -532,8 +532,6 @@ namespace Norm.Tests
             Assert.Equal(top2.Left.Title, top2.Right.Title);
         }
 
-#if true
-        // Cannot test this since Expando cannot hold a class instance
         [Fact]
         public void SerializesSharedReferencesInExpando()
         {
@@ -553,6 +551,31 @@ namespace Norm.Tests
             // Modify Left and verify that Right is modified too
             ((Expression)top2["Left"]).Title = "Changed";
             Assert.Equal(((Expression)top2["Left"]).Title, ((Expression)top2["Right"]).Title);
+        }
+
+#if false
+        // Cannot store Expando in Expando.
+        [Fact]
+        public void SerializesSharedExpandoInExpando()
+        {
+            Expando child = new Expando();
+            child["Title"] = "Child";
+
+            Expando top = new Expando();
+            top["Title"] = "Top";
+            top["Left"] = child;
+            top["Right"] = child;
+
+            var bytes = BsonSerializer.Serialize(top);
+            var top2 = BsonDeserializer.Deserialize<Expando>(bytes);
+
+            Assert.Equal(top["Title"], top2["Title"]);
+            Assert.Equal(child["Title"], ((Expando)top2["Left"])["Title"]);
+            Assert.Equal(child["Title"], ((Expando)top2["Right"])["Title"]);
+
+            // Modify Left and verify that Right is modified too
+            ((Expando)top2["Left"])["Title"] = "Changed";
+            Assert.Equal(((Expando)top2["Left"])["Title"], ((Expando)top2["Right"])["Title"]);
         }
 #endif
 

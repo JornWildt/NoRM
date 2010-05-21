@@ -273,6 +273,7 @@ namespace Norm.BSON
         {
             bool processedNonTypeProperties = false;
             object instance = null;
+            bool createdInitialInstance = false;
             TypeHelper typeHelper = null;
 
             if (type.IsInterface == false && type.IsAbstract == false)
@@ -283,6 +284,7 @@ namespace Norm.BSON
 
                 // Add new instance to local object store before deserializing child properties
                 LocalObjectStore.Add(instance);
+                createdInitialInstance = true;
             }
 
             while (true)
@@ -305,20 +307,25 @@ namespace Norm.BSON
                     typeHelper = TypeHelper.GetHelperForType(type);
                     instance = Activator.CreateInstance(type, true);
                     typeHelper.ApplyDefaultValues(instance);
-                    LocalObjectStore[LocalObjectStore.Count - 1] = instance;
+
+                    // Got new instance, remember to replace in local object store if ever added
+                    if (createdInitialInstance)
+                        LocalObjectStore[LocalObjectStore.Count - 1] = instance;
+
                     continue;
                 }
 
                 if (name == "__link")
                 {
-                    // Oops this was only a reference, remove instance from local store
-                    LocalObjectStore.RemoveAt(LocalObjectStore.Count-1);
+                    // Oops this was only a reference, remove instance from local store if ever added
+                    if (createdInitialInstance)
+                        LocalObjectStore.RemoveAt(LocalObjectStore.Count-1);
 
                     int index = ReadInt(BSONTypes.Int32);
                     if (IsDone())
                         return LocalObjectStore[index];
                     else
-                        throw new MongoException("Expected end-of-object for __link__ element but did not get it.");
+                        throw new MongoException("Expected end-of-object for __link element in ReadObject but did not get it.");
                 }
 
                 if (instance == null)
@@ -619,6 +626,7 @@ namespace Norm.BSON
         private Expando ReadFlyweight()
         {
             var flyweight = new Expando();
+
             while (true)
             {
                 var storageType = ReadType();
