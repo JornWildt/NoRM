@@ -73,9 +73,21 @@ namespace Norm.Linq
         /// </summary>
         /// <param name="str">The string</param>
         /// <returns>The escaped string.</returns>
-        public static string EscapeDoubleQuotes(this string str)
+        public static string EscapeJavaScriptString(this string str)
         {
-            return str.Replace("\"", "\\\"");
+            return str.Replace("\\", "\\\\").Replace("\"", "\\\"");
+        }
+
+        /// <summary>
+        /// Converts a QualifierCommand into an Expando object
+        /// </summary>
+        /// <param name="qualifier"></param>
+        /// <returns>Qualifer Command as Expando object</returns>
+        public static Expando AsExpando(this QualifierCommand qualifier)
+        {
+            var expando = new Expando();
+            expando[qualifier.CommandName] = qualifier.ValueForCommand;
+            return expando;
         }
     }
 }

@@ -250,7 +250,7 @@ namespace Norm.Linq
 
             var fixedName = fullName
                 .Skip(1)
-                .Select(x => Regex.Replace(x, @"get_Item\(([0-9]+)\)$", "$1|Ind"))
+                .Select(x => Regex.Replace(x, @"^get_Item\(([0-9]+)\)$", "$1|Ind"))
                 .Select(x => Regex.Replace(x, @"\[([0-9]+)\]$", "$1|Ind"))
                 .Select(x => x.Replace("First()", "0|Ind"))
                 .ToArray();
@@ -318,7 +318,7 @@ namespace Norm.Linq
         /// </exception>
         protected override Expression VisitUnary(UnaryExpression u)
         {
-            string op = this.GetOperator(u);
+            string op = GetOperator(u);
             switch (u.NodeType)
             {
                 case ExpressionType.Not:
@@ -585,8 +585,8 @@ namespace Norm.Linq
             if (q != null)
             {
                 // set the collection name
-                this.TypeName = q.ElementType.Name;
-                this.CollectionName = MongoConfiguration.GetCollectionName(q.ElementType);                
+                TypeName = q.ElementType.Name;
+                CollectionName = MongoConfiguration.GetCollectionName(q.ElementType);                
 
                 // this is our Query wrapper - see if it has an expression
                 var qry = (IMongoQuery)c.Value;
@@ -659,7 +659,7 @@ namespace Norm.Linq
                 case TypeCode.DateTime:
                     return "+(" + (long)((DateTime)value).ToUniversalTime().Subtract(BsonHelper.EPOCH).TotalMilliseconds + ")";
                 case TypeCode.String:
-                    return "\"" + value.ToString().EscapeDoubleQuotes() + "\"";
+                    return "\"" + value.ToString().EscapeJavaScriptString() + "\"";
                 case TypeCode.Object:
                     if (value is ObjectId || value is Guid)
                     {
@@ -683,9 +683,9 @@ namespace Norm.Linq
         /// </exception>
         protected override Expression VisitMethodCall(MethodCallExpression m)
         {
-            if (string.IsNullOrEmpty(this.MethodCall))
+            if (string.IsNullOrEmpty(MethodCall))
             {
-                this.MethodCall = m.Method.Name;
+                MethodCall = m.Method.Name;
             }
 
             if (m.Method.DeclaringType == typeof(string))
@@ -698,9 +698,9 @@ namespace Norm.Linq
 
                             _sbWhere.Append("(");
                             Visit(m.Object);
-                            _sbWhere.AppendFormat(".indexOf(\"{0}\")===0)", value.EscapeDoubleQuotes());
+                            _sbWhere.AppendFormat(".indexOf(\"{0}\")===0)", value.EscapeJavaScriptString());
   
-                            SetFlyValue(new Regex("^" + value));
+                            SetFlyValue(new Regex("^" + Regex.Escape(value)));
 
                             return m;
                         }
@@ -717,11 +717,11 @@ namespace Norm.Linq
                             Visit(m.Object);
                             _sbWhere.AppendFormat(".length - {0}) >= 0 && ", value.Length);
                             Visit(m.Object);
-                            _sbWhere.AppendFormat(".lastIndexOf(\"{0}\") === (", value.EscapeDoubleQuotes());
+                            _sbWhere.AppendFormat(".lastIndexOf(\"{0}\") === (", value.EscapeJavaScriptString());
                             Visit(m.Object);
                             _sbWhere.AppendFormat(".length - {0}))", value.Length);
 
-                            SetFlyValue(new Regex(value + "$"));
+                            SetFlyValue(new Regex(Regex.Escape(value) + "$"));
 
                             return m;
                         }
@@ -731,9 +731,9 @@ namespace Norm.Linq
 
                             _sbWhere.Append("(");
                             Visit(m.Object);
-                            _sbWhere.AppendFormat(".indexOf(\"{0}\")>-1)", value.EscapeDoubleQuotes());
-                            
-                            SetFlyValue(new Regex(value));
+                            _sbWhere.AppendFormat(".indexOf(\"{0}\")>-1)", value.EscapeJavaScriptString());
+
+                            SetFlyValue(new Regex(Regex.Escape(value)));
 
                             return m;
                         }
@@ -786,7 +786,7 @@ namespace Norm.Linq
                     case "Replace":
                         Visit(m.Object);
                         _sbWhere.Append(".replace(new RegExp(");
-                        Visit(m.Arguments[0]);
+                        _sbWhere.Append(GetJavaScriptConstantValue(Regex.Escape(m.Arguments[0].GetConstantValue<string>())));
                         _sbWhere.Append(",'g'),");
                         Visit(m.Arguments[1]);
                         _sbWhere.Append(")");
@@ -865,69 +865,86 @@ namespace Norm.Linq
             {
                 _lastFlyProperty = (string.Join(".", _prefixAlias.ToArray()) + "." + _lastFlyProperty).TrimEnd('.');
             }
-                      
-            // if the property has already been set, we can't set it again
-            // as fly uses Dictionaries. This means you can't do BETWEEN style native queries
-            if (FlyWeight.Contains(_lastFlyProperty))
-            {
-                IsComplex = true;
-                return;
-            }
 
-            switch (_lastOperator)
-            {
-                case " !== ":
-                    FlyWeight[_lastFlyProperty] = Q.NotEqual(value);
-                    break;
-                case " === ":
-                    FlyWeight[_lastFlyProperty] = value;
-                    break;
-                default:
-                    // Can't do comparisons here unless the type is a double
-                    // which is a limitation of mongo, apparently
-                    // and won't work if we're doing date comparisons
-                    if (value != null && (value.GetType().IsAssignableFrom(typeof(double))
+            SetFlyValue(_lastFlyProperty, value);
+        }
+
+        private bool CanGetQualifier(string op, object value)
+        {
+            if (op == " !== " || op == " === ")
+                return true;
+            
+            if (value != null && (value.GetType().IsAssignableFrom(typeof(double))
+                        || value.GetType().IsAssignableFrom(typeof(double?))
                         || value.GetType().IsAssignableFrom(typeof(int))
                         || value.GetType().IsAssignableFrom(typeof(int?))
                         || value.GetType().IsAssignableFrom(typeof(long))
+                        || value.GetType().IsAssignableFrom(typeof(long?))
+                        || value.GetType().IsAssignableFrom(typeof(float))
+                        || value.GetType().IsAssignableFrom(typeof(float?))
                         || value.GetType().IsAssignableFrom(typeof(DateTime))
                         || value.GetType().IsAssignableFrom(typeof(DateTime?))))
-                    {
-                        switch (_lastOperator)
-                        {
-                            case " > ":
-                                FlyWeight[_lastFlyProperty] = Q.GreaterThan(value);
-                                break;
-                            case " < ":
-                                FlyWeight[_lastFlyProperty] = Q.LessThan(value);
-                                break;
-                            case " <= ":
-                                FlyWeight[_lastFlyProperty] = Q.LessOrEqual(value);
-                                break;
-                            case " >= ":
-                                FlyWeight[_lastFlyProperty] = Q.GreaterOrEqual(value);
-                                break;
-                        }
-                    }
-                    else
-                    {
-                        // Can't assign? Push to the $where
-                        IsComplex = true;
-                    }
-                    break;
+            {
+                switch (op)
+                {
+                    case " > ":
+                    case " < ":
+                    case " <= ":
+                    case " >= ":
+                        return true;
+                }
             }
 
+            return false;
+        }
+
+        private object GetQualifier(string op, object value)
+        {
+            switch (op)
+            {
+                case " === ":
+                    return value;
+                case " !== ":
+                    return Q.NotEqual(value).AsExpando();
+                case " > ":
+                    return Q.GreaterThan(value).AsExpando();
+                case " < ":
+                    return Q.LessThan(value).AsExpando();
+                case " <= ":
+                    return Q.LessOrEqual(value).AsExpando();
+                case " >= ":
+                    return Q.GreaterOrEqual(value).AsExpando();
+            }
+
+            return null;
         }
 
         private void SetFlyValue(string key, object value)
         {
-            if (FlyWeight.Contains(key))
+            if (!CanGetQualifier(_lastOperator, value))
             {
                 IsComplex = true;
                 return;
             }
 
-            FlyWeight[key] = value;
+            if (FlyWeight.Contains(key))
+            {
+                var existing = FlyWeight[key] as Expando;
+                if (existing != null)
+                {
+                    var newq = GetQualifier(_lastOperator, value) as Expando;
+                    if (newq != null)
+                    {
+                        existing.Merge(newq);
+                        return;
+                    }
+                }
+
+                IsComplex = true;
+                return;
+            }
+
+            FlyWeight[key] = GetQualifier(_lastOperator, value);
         }
 
         /// <summary>
@@ -936,7 +953,7 @@ namespace Norm.Linq
         /// <param name="exp">The expression.</param>
         private void HandleSkip(Expression exp)
         {
-            this.Skip = exp.GetConstantValue<int>();
+            Skip = exp.GetConstantValue<int>();
         }
 
         /// <summary>
@@ -945,14 +962,17 @@ namespace Norm.Linq
         /// <param name="exp">The expression.</param>
         private void HandleTake(Expression exp)
         {
-            this.Take = exp.GetConstantValue<int>();
+            Take = exp.GetConstantValue<int>();
         }
 
         private void HandleSort(Expression exp, OrderBy orderby)
         {
             var stripped = GetLambda(exp);
-            var member = (MemberExpression)stripped.Body;
-            this.SortFly[member.Member.Name] = orderby;
+            var member = stripped.Body as MemberExpression;
+            if (member == null)
+                throw new NotSupportedException("Order clause supplied is not supported");
+
+            SortFly[VisitDeepAlias(member)] = orderby;
         }
 
         private void HandleAggregate(MethodCallExpression exp)
@@ -960,8 +980,11 @@ namespace Norm.Linq
             if (exp.Arguments.Count == 2)
             {
                 var stripped = GetLambda(exp.Arguments[1]);
-                var member = (MemberExpression)stripped.Body;
-                AggregatePropName = member.Member.Name;
+                var member = stripped.Body as MemberExpression;
+                if (member == null)
+                    throw new NotSupportedException("Aggregate clause supplied is not supported");
+
+                AggregatePropName = VisitDeepAlias(member);
             }
         }
 
@@ -978,33 +1001,40 @@ namespace Norm.Linq
             if (_whereWritten)
             {
                 _sbWhere.Append(" && ");
-                IsComplex = true;
             }
 
             VisitPredicate(GetLambda(exp).Body);
-
             _whereWritten = true;
         }
 
         private void HandleContains(MethodCallExpression m)
         {
-            var collection = m.Object.GetConstantValue<IEnumerable>();
+            var collection = m.Object.GetConstantValue<IEnumerable>().Cast<object>().ToArray();
+            var member = VisitDeepAlias((MemberExpression)m.Arguments[0]);
 
-            _sbWhere.Append("(");
-            foreach (var item in collection)
+            if (collection.Length > 0)
             {
-                if (UseScopedQualifier)
-                    _sbWhere.Append("this.");
+                _sbWhere.Append("(");
+                foreach (var item in collection)
+                {
+                    if (UseScopedQualifier)
+                        _sbWhere.Append("this.");
 
-                _sbWhere.Append(VisitDeepAlias((MemberExpression)m.Arguments[0]));
-                _sbWhere.Append(" === ");
-                _sbWhere.Append(GetJavaScriptConstantValue(item));
-                _sbWhere.Append(" || ");
+                    _sbWhere.Append(member);
+                    _sbWhere.Append(" === ");
+                    _sbWhere.Append(GetJavaScriptConstantValue(item));
+                    _sbWhere.Append(" || ");
+                }
+                _sbWhere.Remove(_sbWhere.Length - 4, 4);
+                _sbWhere.Append(")");
             }
-            _sbWhere.Remove(_sbWhere.Length - 4, 4);
-            _sbWhere.Append(")");
+            else
+            {
+                //Handle no items in the contains list
+                _sbWhere.Append("(1===2)");
+            }
 
-            SetFlyValue(VisitDeepAlias((MemberExpression)m.Arguments[0]), Q.In(collection.Cast<object>().ToArray()));
+            SetFlyValue(member, Q.In(collection).AsExpando());
         }
 
         private void HandleSubCount(MethodCallExpression m)
@@ -1045,7 +1075,7 @@ namespace Norm.Linq
 
             string value = m.Arguments[1].GetConstantValue<string>();
 
-            _sbWhere.AppendFormat("(new RegExp(\"{0}\",\"{1}\")).test(", value.EscapeDoubleQuotes(), jsoptions);
+            _sbWhere.AppendFormat("(new RegExp(\"{0}\",\"{1}\")).test(", value.EscapeJavaScriptString(), jsoptions);
             Visit(m.Arguments[0]);
             _sbWhere.Append(")");
 
@@ -1109,8 +1139,8 @@ namespace Norm.Linq
                     HandleAggregate(m);
                     break;
                 default:
-                    this.Take = 1;
-                    this.MethodCall = m.Method.Name;
+                    Take = 1;
+                    MethodCall = m.Method.Name;
                     if (m.Arguments.Count > 1)
                     {
                         var lambda = GetLambda(m.Arguments[1]);
