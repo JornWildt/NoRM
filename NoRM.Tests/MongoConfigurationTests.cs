@@ -17,7 +17,6 @@ namespace Norm.Tests
             MongoConfiguration.RemoveMapFor<Shopper>();
             MongoConfiguration.RemoveMapFor<Cart>();
             MongoConfiguration.RemoveMapFor<TestProduct>();
-            MongoConfiguration.RemoveMapFor<ProductSummary>();
             MongoConfiguration.RemoveTypeConverterFor<NonSerializableValueObject>();
 
             using (var admin = new MongoAdmin(TestHelper.ConnectionString()))
@@ -39,13 +38,13 @@ namespace Norm.Tests
         [Fact]
         public void Mongo_Configuration_Should_Notify_TypeHelper()
         {
-            var typeHelper = TypeHelper.GetHelperForType(typeof(User2));
+            var typeHelper = ReflectionHelper.GetHelperForType(typeof(User2));
             Assert.Equal("LastName", typeHelper.FindProperty("LastName").Name);
 
             //the mapping should cause the typehelper cache to be rebuilt with the new properties.
             MongoConfiguration.Initialize(cfg => cfg.For<User2>(j => j.ForProperty(k => k.LastName).UseAlias("LNAME")));
 
-            typeHelper = TypeHelper.GetHelperForType(typeof(User2));
+            typeHelper = ReflectionHelper.GetHelperForType(typeof(User2));
             Assert.Equal("LastName", typeHelper.FindProperty("LNAME").Name);
         }
 
@@ -135,7 +134,7 @@ namespace Norm.Tests
         {
 
             MongoConfiguration.Initialize(c => c.AddMap<ShopperMap>());
-            using (var shoppers = new Shoppers(MongoQueryProvider.Create("mongodb://localhost:27017/test")))
+            using (var shoppers = new Shoppers(Mongo.Create("mongodb://localhost:27017/test")))
             {
                 shoppers.Drop<Shopper>();
                 shoppers.Add(new Shopper
@@ -177,7 +176,7 @@ namespace Norm.Tests
         public void Are_Queries_Fully_Linqified()
         {
             MongoConfiguration.Initialize(c => c.AddMap<ShopperMap>());
-            using (var shoppers = new Shoppers(MongoQueryProvider.Create("mongodb://localhost:27017/test")))
+            using (var shoppers = new Shoppers(Mongo.Create("mongodb://localhost:27017/test")))
             {
                 shoppers.Drop<Shopper>();
                 shoppers.Add(new Shopper
@@ -257,7 +256,7 @@ namespace Norm.Tests
                 var found = mongo.GetCollection<SuperClassObjectFluentMapped>("Fake").Find();
 
                 Assert.Equal(2, found.Count());
-                Assert.Equal(obj1.Id, found.ElementAt(0).Id);
+                Assert.Equal(obj1.Id, found.ElementAt(0).Id) ;
                 Assert.Equal("Prod1", found.ElementAt(0).Title);
                 Assert.Equal(obj2.Id, found.ElementAt(1).Id);
                 Assert.Equal("Prod2", found.ElementAt(1).Title);
@@ -278,21 +277,6 @@ namespace Norm.Tests
                 Assert.Equal(typeof(SubClassedObjectFluentMapped), found.ElementAt(0).GetType());
             }
         }
-
-        [Fact]
-        public void MarksAClassAsASummary()
-        {
-            MongoConfiguration.Initialize(m => m.For<ProductSummary>(p => p.SummaryOf<TestProduct>()));
-            using (var mongo = Mongo.Create(TestHelper.ConnectionString()))
-            {
-                mongo.GetCollection<TestProduct>().Insert(new TestProduct { UniqueID = Guid.NewGuid(), Available = DateTime.Now, Name = "Soap", Price = 2, Supplier = new Supplier { Name = "A Supplier" } });
-                mongo.GetCollection<TestProduct>().Insert(new TestProduct { UniqueID = Guid.NewGuid(), Available = DateTime.Now, Name = "Rope", Price = 1, Supplier = new Supplier { Name = "A Supplier" } });
-                mongo.GetCollection<TestProduct>().Insert(new TestProduct { UniqueID = Guid.NewGuid(), Available = DateTime.Now, Name = "Fun", Price = 0, Supplier = new Supplier { Name = "A Supplier" } });
-
-                var found = mongo.GetCollection<ProductSummary>().Find();
-                Assert.Equal(3, found.Count());
-                Assert.Equal("Soap", found.ElementAt(0).Name);
-                Assert.Equal(2, found.ElementAt(0).Price);
             }
         }
 

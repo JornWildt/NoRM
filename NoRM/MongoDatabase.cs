@@ -19,12 +19,22 @@ namespace Norm
         /// <summary>
         /// Initializes a new instance of the <see cref="MongoDatabase"/> class.
         /// </summary>
-        /// <param name="databaseName">The database name.</param>
-        /// <param name="connection">The connection.</param>
+        /// <param retval="databaseName">The database retval.</param>
+        /// <param retval="connection">The connection.</param>
         public MongoDatabase(string databaseName, IConnection connection)
         {
             _databaseName = databaseName;
             _connection = connection;
+        }
+
+        /// <summary>
+        /// The create map reduce.
+        /// </summary>
+        /// <returns>
+        /// </returns>
+        public MapReduce CreateMapReduce()
+        {
+            return new MapReduce(this);
         }
 
         /// <summary>
@@ -36,7 +46,7 @@ namespace Norm
         }
 
         /// <summary>
-        /// Gets the dtabase name.
+        /// Gets the dtabase retval.
         /// </summary>
         public string DatabaseName
         {
@@ -46,7 +56,7 @@ namespace Norm
         /// <summary>
         /// The get collection.
         /// </summary>
-        /// <param name="collectionName">The collection name.</param>
+        /// <param retval="collectionName">The collection retval.</param>
         /// <returns></returns>
         public MongoCollection GetCollection(string collectionName)
         {
@@ -56,8 +66,8 @@ namespace Norm
         /// <summary>
         /// Gets a collection.
         /// </summary>
-        /// <typeparam name="T">collection type</typeparam>
-        /// <param name="collectionName">The collection name.</param>
+        /// <typeparam retval="T">collection type</typeparam>
+        /// <param retval="collectionName">The collection retval.</param>
         /// <returns></returns>
         public MongoCollection<T> GetCollection<T>(string collectionName)
         {
@@ -67,7 +77,7 @@ namespace Norm
          /// <summary>
         /// Gets a collection.
         /// </summary>
-        /// <typeparam name="T">Collection type</typeparam>
+        /// <typeparam retval="T">Collection type</typeparam>
         /// <returns></returns>
         public MongoCollection<T> GetCollection<T>()
         {
@@ -89,7 +99,7 @@ namespace Norm
         /// <summary>
         /// Gets collection statistics.
         /// </summary>
-        /// <param name="collectionName">The collection name.</param>
+        /// <param retval="collectionName">The collection retval.</param>
         /// <returns></returns>
         public CollectionStatistics GetCollectionStatistics(string collectionName)
         {
@@ -112,7 +122,7 @@ namespace Norm
         /// <summary>
         /// Drops a collection.
         /// </summary>
-        /// <param name="collectionName">The collection name.</param>
+        /// <param retval="collectionName">The collection retval.</param>
         /// <returns>The drop collection.</returns>
         public bool DropCollection(string collectionName)
         {
@@ -134,7 +144,7 @@ namespace Norm
         /// <summary>
         /// Creates a collection.
         /// </summary>
-        /// <param name="options">The options.</param>
+        /// <param retval="options">The options.</param>
         /// <returns>The create collection.</returns>
         public bool CreateCollection(CreateCollectionOptions options)
         {
@@ -156,7 +166,7 @@ namespace Norm
         /// <summary>
         /// Sets the profile level.
         /// </summary>
-        /// <param name="level">The level.</param>
+        /// <param retval="level">The level.</param>
         /// <returns></returns>
         public SetProfileResponse SetProfileLevel(ProfileLevel level)
         {
@@ -177,8 +187,8 @@ namespace Norm
         /// <summary>
         /// Validates a collection.
         /// </summary>
-        /// <param name="collectionName">The collection name.</param>
-        /// <param name="scanData">The scan data.</param>
+        /// <param retval="collectionName">The collection retval.</param>
+        /// <param retval="scanData">The scan data.</param>
         /// <returns></returns>
         public ValidateCollectionResponse ValidateCollection(string collectionName, bool scanData)
         {

@@ -4,14 +4,15 @@ using System.Text;
 using System.Threading;
 using Norm.BSON;
 using Norm.Protocol.SystemMessages;
+using System.Collections.Generic;
 
 namespace Norm.Protocol.Messages
 {
     /// <summary>
     /// A query to the db.
     /// </summary>
-    /// <typeparam name="T">The response type.</typeparam>
-    /// <typeparam name="U">The request type.</typeparam>
+    /// <typeparam retval="T">The response type.</typeparam>
+    /// <typeparam retval="U">The request type.</typeparam>
     public class QueryMessage<T, U> : Message
     {
         /// <summary>
@@ -31,10 +32,11 @@ namespace Norm.Protocol.Messages
         /// <summary>
         /// Initializes a new instance of the <see cref="QueryMessage&lt;T, U&gt;"/> class.
         /// </summary>
-        /// <param name="connection">The connection.</param>
-        /// <param name="fullyQualifiedCollName">Name of the fully qualified coll.</param>
-        public QueryMessage(IConnection connection, string fullyQualifiedCollName) : base(connection, fullyQualifiedCollName)
-        {            
+        /// <param retval="connection">The connection.</param>
+        /// <param retval="fullyQualifiedCollName">Name of the fully qualified coll.</param>
+        public QueryMessage(IConnection connection, string fullyQualifiedCollName)
+            : base(connection, fullyQualifiedCollName)
+        {
             NumberToTake = int.MaxValue;
         }
 
@@ -42,20 +44,20 @@ namespace Norm.Protocol.Messages
         /// A BSON query.
         /// </summary>
         /// <value>The Query property gets/sets the Query data member.</value>
-        public U Query
+        internal U Query
         {
             get;
             set;
         }
 
         /// <summary>
-        /// The fields to select
+        /// The fields to select from each document in the current collection.
         /// </summary>
-        internal FieldSelectionList FieldSelection { get; set; }
+        internal IEnumerable<String> FieldSelection { get; set; }
 
-        /// <summary>TODO::Description.</summary>
+        /// <summary>This defines </summary>
         /// <value>The OrderBy property gets/sets the OrderBy data member.</value>
-        public object OrderBy
+        internal object OrderBy
         {
             get;
             set;
@@ -64,7 +66,7 @@ namespace Norm.Protocol.Messages
         /// Gets or sets the number of documents to take.
         /// </summary>
         /// <value>The number of documents to take.</value>
-        public int NumberToTake
+        internal int NumberToTake
         {
             get;
             set;
@@ -83,8 +85,16 @@ namespace Norm.Protocol.Messages
         public ReplyMessage<T> Execute()
         {
             var payload1 = GetPayload();
-            var payload2 = (FieldSelection == null) ? new byte[0] : BsonSerializer.Serialize(FieldSelection);
-            
+            var payload2 = new byte[0];
+            if (this.FieldSelection != null)
+            {
+                var fields = new Expando();
+                foreach (var f in FieldSelection)
+                {
+                    fields[f] = 1;
+                }
+                payload2 = BsonSerializer.Serialize(fields);
+            }
             var collection = Encoding.UTF8.GetBytes(_collection);
             var collectionLength = collection.Length + 1; //+1 is for collection's null terminator which we'll be adding in a bit
             var headLength = 28 + collectionLength;
@@ -101,7 +111,7 @@ namespace Norm.Protocol.Messages
             _connection.Write(payload1, 0, payload1.Length);
             _connection.Write(payload2, 0, payload2.Length);
 
-           var stream = _connection.GetStream();
+            var stream = _connection.GetStream();
             while (!stream.DataAvailable)
             {
                 Thread.Sleep(1);
@@ -113,20 +123,24 @@ namespace Norm.Protocol.Messages
             }
             return new ReplyMessage<T>(_connection, this._collection, new BinaryReader(new BufferedStream(stream)), MongoOp.Query, this.NumberToTake);
         }
-        
+
+        /// <summary>
+        /// Construct query and order by BSON.
+        /// </summary>
+        /// <returns></returns>
         private byte[] GetPayload()
         {
             if (Query != null && Query is ISystemQuery)
             {
                 return BsonSerializer.Serialize(Query);
-            }            
+            }
             var fly = new Expando();
-            fly["query"] = Query;            
+            fly["query"] = Query;
             if (OrderBy != null)
             {
                 fly["orderby"] = this.OrderBy;
             }
-            return BsonSerializer.Serialize(fly);            
+            return BsonSerializer.Serialize(fly);
         }
     }
 }

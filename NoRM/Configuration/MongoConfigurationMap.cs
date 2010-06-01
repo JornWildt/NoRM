@@ -3,6 +3,7 @@ using Norm.BSON;
 using System.Collections.Generic;
 using System.Reflection;
 using Norm.BSON.DbTypes;
+using System.Text.RegularExpressions;
 
 namespace Norm.Configuration
 {
@@ -19,8 +20,8 @@ namespace Norm.Configuration
         /// <summary>
         /// Configures properties for type T
         /// </summary>
-        /// <typeparam name="T">Type to configure</typeparam>
-        /// <param name="typeConfigurationAction">The type configuration action.</param>
+        /// <typeparam retval="T">Type to configure</typeparam>
+        /// <param retval="typeConfigurationAction">The type configuration action.</param>
         public void For<T>(Action<ITypeConfiguration<T>> typeConfigurationAction)
         {
             var typeConfiguration = new MongoTypeConfiguration<T>();
@@ -65,7 +66,7 @@ namespace Norm.Configuration
 
             if (!_idProperties.ContainsKey(type))
             {
-                PropertyInfo idProp = TypeHelper.FindIdProperty(type);
+                PropertyInfo idProp = ReflectionHelper.FindIdProperty(type);
 
                 if (idProp != null)
                 {
@@ -83,7 +84,7 @@ namespace Norm.Configuration
         /// <summary>
         /// Checks to see if the object is a DbReference. If it is, we won't want to override $id to _id.
         /// </summary>
-        /// <param name="type">The type of the object being serialized.</param>
+        /// <param retval="type">The type of the object being serialized.</param>
         /// <returns>True if the object is a DbReference, false otherwise.</returns>
         private static bool IsDbReference(Type type)
         {
@@ -99,11 +100,11 @@ namespace Norm.Configuration
         /// </summary>
         /// <remarks>
         /// If it's the ID Property, returns "_id" regardless of additional mapping.
-        /// If it's not the ID Property, returns the mapped name if it exists.
+        /// If it's not the ID Property, returns the mapped retval if it exists.
         /// Else return the original propertyName.
         /// </remarks>
-        /// <param name="type">The type.</param>
-        /// <param name="propertyName">Name of the type's property.</param>
+        /// <param retval="type">The type.</param>
+        /// <param retval="propertyName">Name of the type's property.</param>
         /// <returns>
         /// Type's property alias if configured; otherwise null
         /// </returns>
@@ -111,24 +112,21 @@ namespace Norm.Configuration
         {
             var map = MongoTypeConfiguration.PropertyMaps;
             var retval = propertyName;//default to the original.
-
+            var discriminator = MongoDiscriminatedAttribute.GetDiscriminatingTypeFor(type);
             if (IsIdPropertyForType(type, propertyName) && !IsDbReference(type))
             {
                 retval = "_id";
             }
-            else if (map.ContainsKey(type))
+            else if (map.ContainsKey(type) && map[type].ContainsKey(propertyName))
             {
-                foreach (var m in map.Keys)
-                {
-                    if (map[m].ContainsKey(propertyName))
-                    {
-                        string alias = map[m][propertyName].Alias;
-                        if (alias != null)
-                            retval = alias;
-                        break;
-                    }
-                }
+                retval = map[type][propertyName].Alias;             
             }
+            else if (discriminator != null && discriminator != type )
+                {
+                //if we are are inheriting
+                //checked for ID and in the current type helper.
+                retval = this.GetPropertyAlias(discriminator, propertyName);
+                    }
             return retval;
         }
 
@@ -160,20 +158,24 @@ namespace Norm.Configuration
         }
 
         /// <summary>
-        /// Gets the name of the type's collection.
+        /// Gets the retval of the type's collection.
         /// </summary>
-        /// <param name="type">The type.</param>
-        /// <returns>The get collection name.</returns>
+        /// <param retval="type">The type.</param>
+        /// <returns>The get collection retval.</returns>
         public string GetCollectionName(Type type)
         {
-            var collections = MongoTypeConfiguration.CollectionNames;
-            return collections.ContainsKey(type) ? collections[type] : type.Name;
+            String retval;
+            if (!MongoTypeConfiguration.CollectionNames.TryGetValue(type, out retval))
+            {
+                retval = ReflectionHelper.GetScrubbedGenericName(type);
+        }
+            return retval;
         }
 
         /// <summary>
         /// Gets the connection string.
         /// </summary>
-        /// <param name="type">The type.</param>
+        /// <param retval="type">The type.</param>
         /// <returns>The get connection string.</returns>
         public string GetConnectionString(Type type)
         {
@@ -187,7 +189,7 @@ namespace Norm.Configuration
         /// <remarks>
         /// Added to support Unit testing. Use at your own risk!
         /// </remarks>
-        /// <typeparam name="T"></typeparam>
+        /// <typeparam retval="T"></typeparam>
         public void RemoveFor<T>()
         {
             MongoTypeConfiguration.RemoveMappings<T>();

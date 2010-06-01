@@ -24,11 +24,21 @@ namespace Norm.Tests
         }
 
         [Fact]
-        public void Find_On_Unspecified_Type_Returns_Expando_When_No_Discriminator_Available()
+        public void CollectionName_For_Deeply_Generic_Collection_Is_Legal_And_Reasonable()
         {
             using (var db = Mongo.Create(TestHelper.ConnectionString()))
             {
-                db.Database.GetCollection("helloWorld").Insert(new { _id = 1 });
+                var coll = db.GetCollection<GenericSuperClass<List<String>>>();
+                Assert.Equal("NormTests.GenericSuperClass_List_String", coll.FullyQualifiedName);
+            }
+        }
+
+        [Fact]
+        public void Find_On_Unspecified_Type_Returns_Expando_When_No_Discriminator_Available()
+        {
+            using (var db = Mongo.Create(TestHelper.ConnectionString("strict=false")))
+            {
+                //db.Database.GetCollection("helloWorld").Insert(new { _id = 1 });
                 db.Database.DropCollection("helloWorld");
                 var coll = db.Database.GetCollection("helloWorld");
                 coll.Insert(new IntId { Id = 5, Name = "hi there" },
@@ -41,10 +51,10 @@ namespace Norm.Tests
             }
         }
 
-        [Fact(Skip="This times out, but I don't know why..")]
+        [Fact(Skip = "This test is timing out")]
         public void Get_Collection_Statistics_Works()
         {
-            using (var mongo = Mongo.Create(TestHelper.ConnectionString("timeout=3")))
+            using (var mongo = Mongo.Create(TestHelper.ConnectionString()))
             {
                 var coll = mongo.GetCollection<IntId>("Fake");
                 coll.Insert(new IntId { Id = 4, Name = "Test 1" });
@@ -101,6 +111,42 @@ namespace Norm.Tests
         }
 
         [Fact]
+        public void Find_Subset_Returns_Appropriate_Subset()
+        {
+            using (var admin = new MongoAdmin(TestHelper.ConnectionString()))
+            {
+                admin.SetProfileLevel(2);
+            }
+            using (var db = Mongo.Create(TestHelper.ConnectionString()))
+            {
+                var coll = db.GetCollection<TestProduct>();
+                coll.Delete(new { });
+                var oid = ObjectId.NewObjectId();
+
+                coll.Insert(new TestProduct
+                {
+                    _id = oid,
+                    Price = 42.42f,
+                    Supplier = new Supplier
+                    {
+                        Name = "Bob's house of pancakes",
+                        RefNum = 12,
+                        CreatedOn = DateTime.MinValue
+                    }
+                });
+
+
+                var subset = db.GetCollection<TestProduct>().Find(new { }, new { }, Int32.MaxValue, 0,
+                    j => new { SupplierName = j.Supplier.Name, Cost = j.Price, Id = j._id }).ToArray();
+
+                Assert.Equal("Bob's house of pancakes", subset[0].SupplierName);
+                Assert.Equal(42.42f, subset[0].Cost);
+                Assert.Equal(oid, subset[0].Id);
+            }
+        }
+
+
+        [Fact]
         public void SaveOrInsertThrowsExceptionIfTypeDoesntHaveAnId()
         {
             using (var mongo = Mongo.Create(TestHelper.ConnectionString()))
@@ -151,14 +197,27 @@ namespace Norm.Tests
                     Price = 10,
                     Supplier = new Supplier { Name = "Supplier", CreatedOn = DateTime.Now }
                 });
-                session.Provider.DB.GetCollection<TestProduct>().CreateIndex(p => p.Supplier.Name, "TestIndex", true, IndexOption.Ascending);
+                session.DB.GetCollection<TestProduct>()
+                    .CreateIndex(p => p.Supplier.Name, "TestIndex", true, IndexOption.Ascending);
 
                 int i;
-                session.Provider.DB.GetCollection<TestProduct>().DeleteIndices(out i);
+                session.DB.GetCollection<TestProduct>().DeleteIndices(out i);
 
                 //it's TWO because there's always an index on _id by default.
                 Assert.Equal(2, i);
 
+            }
+        }
+        [Fact]
+        public void Collection_Creates_Complex_Index()
+        {
+            using (var db = Mongo.Create(TestHelper.ConnectionString()))
+            {
+                MongoConfiguration.Initialize(j => j.For<TestProduct>(k =>
+                    k.ForProperty(x => x.Inventory).UseAlias("inv")));
+
+                var prods = db.GetCollection<TestProduct>();
+                prods.CreateIndex(j => new { j.Available, j.Inventory.Count }, "complexIndex", true, IndexOption.Ascending);
             }
         }
 
@@ -175,13 +234,13 @@ namespace Norm.Tests
                     Price = 10,
                     Supplier = new Supplier { Name = "Supplier", CreatedOn = DateTime.Now }
                 });
-                session.Provider.DB.GetCollection<TestProduct>().CreateIndex(p => p.Supplier.Name, "TestIndex", true, IndexOption.Ascending);
-                session.Provider.DB.GetCollection<TestProduct>().CreateIndex(p => p.Available, "TestIndex1", false, IndexOption.Ascending);
-                session.Provider.DB.GetCollection<TestProduct>().CreateIndex(p => p.Name, "TestIndex2", false, IndexOption.Ascending);
+                session.DB.GetCollection<TestProduct>().CreateIndex(p => p.Supplier.Name, "TestIndex", true, IndexOption.Ascending);
+                session.DB.GetCollection<TestProduct>().CreateIndex(p => p.Available, "TestIndex1", false, IndexOption.Ascending);
+                session.DB.GetCollection<TestProduct>().CreateIndex(p => p.Name, "TestIndex2", false, IndexOption.Ascending);
 
                 int i, j;
-                session.Provider.DB.GetCollection<TestProduct>().DeleteIndex("TestIndex1", out i);
-                session.Provider.DB.GetCollection<TestProduct>().DeleteIndex("TestIndex2", out j);
+                session.DB.GetCollection<TestProduct>().DeleteIndex("TestIndex1", out i);
+                session.DB.GetCollection<TestProduct>().DeleteIndex("TestIndex2", out j);
 
                 Assert.Equal(4, i);
                 Assert.Equal(3, j);

@@ -1,4 +1,7 @@
 using Norm.BSON;
+using System.Linq;
+using System;
+using System.Linq.Expressions;
 
 namespace Norm.Linq
 {
@@ -7,9 +10,11 @@ namespace Norm.Linq
     /// </summary>
     public class QueryTranslationResults
     {
+        public Type OriginalSelectType {get;set;}
+        public LambdaExpression Select { get; set; }
         public Expando Where { get; set; }
         public Expando Sort { get; set; }
-        
+
         public string AggregatePropName { get; set; }
         public string CollectionName { get; set; }
         public string MethodCall { get; set; }
@@ -21,5 +26,6 @@ namespace Norm.Linq
         public bool IsComplex { get; set; }
 
         public string Query { get; set; }
+
     }
 }

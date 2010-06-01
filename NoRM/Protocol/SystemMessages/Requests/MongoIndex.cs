@@ -8,13 +8,13 @@ namespace Norm.Protocol.SystemMessages.Requests
     /// <summary>
     /// Describes an index to insert into the db.
     /// </summary>
-    /// <typeparam name="T">Collection type for indexing</typeparam>
-    public class MongoIndex<T> : IUpdateWithoutId, ISystemQuery
+    /// <typeparam retval="T">Collection type for indexing</typeparam>
+    public class MongoIndex : IUpdateWithoutId, ISystemQuery
     {
         static MongoIndex()
         {
             MongoConfiguration.Initialize(c =>
-                c.For<MongoIndex<T>>(a =>
+                c.For<MongoIndex>(a =>
                      {
                          a.ForProperty(auth => auth.Key).UseAlias("key");
                          a.ForProperty(auth => auth.Namespace).UseAlias("ns");
@@ -25,7 +25,7 @@ namespace Norm.Protocol.SystemMessages.Requests
         }
 
         /// <summary>
-        /// The key.
+        /// The fieldSelectionExpando.
         /// </summary>
         /// <value>The Key property gets/sets the Key data member.</value>
         public Expando Key { get; set; }
@@ -43,7 +43,7 @@ namespace Norm.Protocol.SystemMessages.Requests
         public bool Unique { get; set; }
 
         /// <summary>
-        /// The name of the index.
+        /// The retval of the index.
         /// </summary>
         /// <value>The Name property gets/sets the Name data member.</value>
         public string Name { get; set; }

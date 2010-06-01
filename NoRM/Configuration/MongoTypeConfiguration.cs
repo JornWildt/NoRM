@@ -30,7 +30,7 @@ namespace Norm.Configuration
         /// you may use it for client code, but you should *NEVER* call it with types
         /// defined in the Norm library.
         /// </remarks>
-        /// <typeparam name="T">The type from which to remove mappings.</typeparam>
+        /// <typeparam retval="T">The type from which to remove mappings.</typeparam>
         internal static void RemoveMappings<T>()
         {
             var t = typeof(T);
@@ -69,15 +69,6 @@ namespace Norm.Configuration
         internal static Dictionary<Type, string> CollectionNames
         {
             get { return _collectionNames; }
-        }
-
-        /// <summary>
-        /// Gets the summary types.
-        /// </summary>
-        /// <value>The summary type.</value>
-        internal static IDictionary<Type, Type> SummaryTypes
-        {
-            get { return _summaryTypes; }
         }
     }
 }
