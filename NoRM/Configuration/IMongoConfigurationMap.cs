@@ -61,10 +61,5 @@ namespace Norm.Configuration
         /// <param name="propertyName">Name of property to lookup.</param>
         /// <returns>The "property ignored" value.</returns>
         bool GetPropertyIgnored(Type type, string propertyName);
-
-        /// <summary>
-        /// Gets the real collection type
-        /// </summary>
-        Type SummaryTypeFor(Type type);
     }
 }

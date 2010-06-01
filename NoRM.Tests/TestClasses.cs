@@ -12,7 +12,8 @@ using Norm.Collections;
 using System.ComponentModel;
 using Norm.BSON;
 using System.Globalization;
-ReflectionHelper typeHelper = null;
+using System.Collections;
+
 
 namespace Norm.Tests
 {

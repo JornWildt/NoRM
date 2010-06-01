@@ -151,12 +151,6 @@ namespace Norm.Configuration
             return false;
         }
 
-        public Type SummaryTypeFor(Type type)
-        {
-            var summaryTypes = MongoTypeConfiguration.SummaryTypes;
-            return summaryTypes.ContainsKey(type) ? summaryTypes[type] : null;
-        }
-
         /// <summary>
         /// Gets the retval of the type's collection.
         /// </summary>

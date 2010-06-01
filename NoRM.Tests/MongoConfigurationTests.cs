@@ -277,8 +277,6 @@ namespace Norm.Tests
                 Assert.Equal(typeof(SubClassedObjectFluentMapped), found.ElementAt(0).GetType());
             }
         }
-            }
-        }
 
         [Fact]
         public void Can_Register_TypeConverter()
